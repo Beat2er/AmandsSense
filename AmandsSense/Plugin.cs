@@ -15,11 +15,17 @@ using static EFT.Player;
 
 namespace AmandsSense
 {
-    [BepInPlugin("com.Amanda.Sense", "Sense", "2.0.0")]
+    [BepInPlugin("com.Amanda.Sense", "Sense", "3.0.0")]
+    [BepInDependency("com.SPT.core", "4.0.0")]
     public class AmandsSensePlugin : BaseUnityPlugin
     {
-        public static GameObject Hook;
         public static AmandsSenseClass AmandsSenseClassComponent;
+        internal static BepInEx.Logging.ManualLogSource LogSource;
+
+        public AmandsSensePlugin()
+        {
+            LogSource = Logger;
+        }
         public static ConfigEntry<EEnableSense> EnableSense { get; set; }
         public static ConfigEntry<bool> EnableExfilSense { get; set; }
         public static ConfigEntry<bool> SenseAlwaysOn { get; set; }
@@ -135,14 +141,12 @@ namespace AmandsSense
 
         private void Awake()
         {
-            Debug.LogError("Sense Awake()");
-            Hook = new GameObject("AmandsSense");
-            AmandsSenseClassComponent = Hook.AddComponent<AmandsSenseClass>();
-            AmandsSenseClass.SenseAudioSource = Hook.AddComponent<AudioSource>();
-            DontDestroyOnLoad(Hook);
+            // Component will be added to GameWorld when raid starts via GameWorldStartedPatch
         }
         private void Start()
         {
+            try
+            {
             Version = Config.Bind("Versioning", "Version", "0.0.0", new ConfigDescription("", null, new ConfigurationManagerAttributes { Order = 1, ReadOnly = true, IsAdvanced = true }));
 
             if (Version.Value == "0.0.0")
@@ -284,12 +288,19 @@ namespace AmandsSense
 
             if (RequestDefaultValues) DefaultValues();
 
+            new GameWorldStartedPatch().Enable();
             new AmandsPlayerPatch().Enable();
             new AmandsKillPatch().Enable();
             new AmandsSenseExfiltrationPatch().Enable();
             new AmandsSensePrismEffectsPatch().Enable();
 
             AmandsSenseHelper.Init();
+            }
+            catch (System.Exception ex)
+            {
+                LogSource.LogError($"[AmandsSense] Exception in Start: {ex.Message}\n{ex.StackTrace}");
+                throw;
+            }
         }
         private void DefaultValues()
         {
@@ -310,13 +321,21 @@ namespace AmandsSense
         [PatchPostfix]
         private static void PatchPostFix(ref Player __instance)
         {
-            if (__instance != null && __instance.IsYourPlayer)
+            try
             {
-                AmandsSenseClass.Player = __instance;
-                AmandsSenseClass.inventoryControllerClass = Traverse.Create(__instance).Field("_inventoryController").GetValue<PlayerInventoryController>();
-                AmandsSenseClass.Clear();
-                AmandsSenseClass.scene = SceneManager.GetActiveScene().name;
-                AmandsSenseClass.ReloadFiles(true);
+                if (__instance != null && __instance.IsYourPlayer)
+                {
+                    AmandsSenseClass.Player = __instance;
+                    AmandsSenseClass.inventoryControllerClass = Traverse.Create(__instance).Field("_inventoryController").GetValue<PlayerInventoryController>();
+                    AmandsSenseClass.Clear();
+                    AmandsSenseClass.scene = SceneManager.GetActiveScene().name;
+                    AmandsSenseClass.ReloadFiles(true);
+                }
+            }
+            catch (System.Exception ex)
+            {
+                AmandsSensePlugin.LogSource.LogError($"[AmandsSense] Error in AmandsPlayerPatch: {ex.Message}\n{ex.StackTrace}");
+                throw;
             }
         }
     }
@@ -329,15 +348,23 @@ namespace AmandsSense
         [PatchPostfix]
         private static void PatchPostFix(ref PrismEffects __instance)
         {
-            if (__instance.gameObject.name == "FPS Camera")
+            try
             {
-                AmandsSenseClass.prismEffects = __instance;
-                __instance.debugDofPass = false;
-                __instance.dofForceEnableMedian = false;
-                __instance.dofBokehFactor = 157f;
-                __instance.dofFocusDistance = 2f;
-                __instance.dofNearFocusDistance = 100f;
-                __instance.dofRadius = 0f;
+                if (__instance.gameObject.name == "FPS Camera")
+                {
+                    AmandsSenseClass.prismEffects = __instance;
+                    __instance.debugDofPass = false;
+                    __instance.dofForceEnableMedian = false;
+                    __instance.dofBokehFactor = 157f;
+                    __instance.dofFocusDistance = 2f;
+                    __instance.dofNearFocusDistance = 100f;
+                    __instance.dofRadius = 0f;
+                }
+            }
+            catch (System.Exception ex)
+            {
+                UnityEngine.Debug.LogError($"[AmandsSense] Error in AmandsSensePrismEffectsPatch: {ex.Message}");
+                throw;
             }
         }
     }
@@ -350,7 +377,15 @@ namespace AmandsSense
         [PatchPostfix]
         private static void PatchPostFix(ref Player __instance, Player aggressor, DamageInfoStruct damageInfo, EBodyPart bodyPart, EDamageType lethalDamageType)
         {
-            AmandsSenseClass.DeadPlayers.Add(new SenseDeadPlayerStruct(__instance, aggressor));
+            try
+            {
+                AmandsSenseClass.DeadPlayers.Add(new SenseDeadPlayerStruct(__instance, aggressor));
+            }
+            catch (System.Exception ex)
+            {
+                UnityEngine.Debug.LogError($"[AmandsSense] Error in AmandsKillPatch: {ex.Message}");
+                throw;
+            }
         }
     }
     public class AmandsSenseExfiltrationPatch : ModulePatch
@@ -362,12 +397,20 @@ namespace AmandsSense
         [PatchPostfix]
         private static void PatchPostFix(ref ExfiltrationPoint __instance)
         {
-            GameObject amandsSenseExfiltrationGameObject = new GameObject("SenseExfil");
-            AmandsSenseExfil amandsSenseExfil = amandsSenseExfiltrationGameObject.AddComponent<AmandsSenseExfil>();
-            amandsSenseExfil.SetSense(__instance);
-            amandsSenseExfil.Construct();
-            amandsSenseExfil.ShowSense();
-            AmandsSenseClass.SenseExfils.Add(amandsSenseExfil);
+            try
+            {
+                GameObject amandsSenseExfiltrationGameObject = new GameObject("SenseExfil");
+                AmandsSenseExfil amandsSenseExfil = amandsSenseExfiltrationGameObject.AddComponent<AmandsSenseExfil>();
+                amandsSenseExfil.SetSense(__instance);
+                amandsSenseExfil.Construct();
+                amandsSenseExfil.ShowSense();
+                AmandsSenseClass.SenseExfils.Add(amandsSenseExfil);
+            }
+            catch (System.Exception ex)
+            {
+                UnityEngine.Debug.LogError($"[AmandsSense] Error in AmandsSenseExfiltrationPatch: {ex.Message}");
+                throw;
+            }
         }
     }
 }

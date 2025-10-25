@@ -1,0 +1,40 @@
+# Build outputs
+bin/
+obj/
+*.user
+*.suo
+release/
+*.zip
+
+# IDE
+.vs/
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies (from SPT installation - not included)
+References/
+
+# Assets (game/mod assets - not included due to copyright)
+Assets/
+
+# Example mods (other authors - not included)
+examples/
+.gitmodules
+
+# Build/deployment scripts (local dev only)
+build-and-deploy.ps1
+build-and-deploy.bat
+build-and-deploy.sh
+setup-references.ps1
+
+# Documentation (local only, except LICENSE)
+*.md
+!LICENSE.md
+*.txt
+
+# GitHub workflows (can't include due to asset requirements)
+.github/

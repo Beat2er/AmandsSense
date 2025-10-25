@@ -72,17 +72,34 @@ namespace AmandsSense
         }
         private void Awake()
         {
-            LowLayerMask = LayerMask.GetMask("Terrain", "LowPolyCollider", "HitCollider");
-            HighLayerMask = LayerMask.GetMask("Terrain", "HighPolyCollider", "HitCollider");
-            FoliageLayerMask = LayerMask.GetMask("Terrain", "HighPolyCollider", "HitCollider", "Foliage");
+            try
+            {
+                LowLayerMask = LayerMask.GetMask("Terrain", "LowPolyCollider", "HitCollider");
+                HighLayerMask = LayerMask.GetMask("Terrain", "HighPolyCollider", "HitCollider");
+                FoliageLayerMask = LayerMask.GetMask("Terrain", "HighPolyCollider", "HitCollider", "Foliage");
 
-            BoxInteractiveLayerMask = LayerMask.GetMask("Interactive");
-            BoxDeadbodyLayerMask = LayerMask.GetMask("Deadbody");
+                BoxInteractiveLayerMask = LayerMask.GetMask("Interactive");
+                BoxDeadbodyLayerMask = LayerMask.GetMask("Deadbody");
+            }
+            catch (Exception ex)
+            {
+                AmandsSensePlugin.LogSource.LogError($"[AmandsSense] AmandsSenseClass.Awake() exception: {ex.Message}\n{ex.StackTrace}");
+                throw;
+            }
         }
         public void Start()
         {
-            itemsJsonClass = ReadFromJsonFile<ItemsJsonClass>((AppDomain.CurrentDomain.BaseDirectory + "/BepInEx/plugins/Sense/Items.json"));
-            ReloadFiles(false);
+            try
+            {
+                string itemsPath = AppDomain.CurrentDomain.BaseDirectory + "/BepInEx/plugins/Sense/Items.json";
+                itemsJsonClass = ReadFromJsonFile<ItemsJsonClass>(itemsPath);
+                ReloadFiles(false);
+            }
+            catch (Exception ex)
+            {
+                AmandsSensePlugin.LogSource.LogError($"[AmandsSense] AmandsSenseClass.Start() exception: {ex.Message}\n{ex.StackTrace}");
+                throw;
+            }
         }
         public void Update()
         {
